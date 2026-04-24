@@ -4,8 +4,8 @@
 
 **REST API untuk Platform Literasi Keuangan Finsight**
 
-[![Node.js](https://img.shields.io/badge/Node.js-18-339933?logo=nodedotjs)](https://nodejs.org)
-[![Express](https://img.shields.io/badge/Express-4-000?logo=express)](https://expressjs.com)
+[![Node.js](https://img.shields.io/badge/Node.js-24.13.1-339933?logo=nodedotjs)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-5.2.1-000?logo=express)](https://expressjs.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql)](https://postgresql.org)
 [![JWT](https://img.shields.io/badge/Auth-JWT-000?logo=jsonwebtokens)](https://jwt.io)
 
@@ -215,4 +215,3 @@ NODE_ENV=production npm start
 
 **Hidayat Lossen** — Backend Developer
 > Coding Camp 2026 | CC26-PSU113
-

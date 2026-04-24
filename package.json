@@ -1,0 +1,61 @@
+{
+  "name": "finsight-backend",
+  "version": "1.0.0",
+  "description": "Finsight Backend API - OCR-based financial transaction tracker for young Indonesians",
+  "keywords": [
+    "fintech",
+    "ocr",
+    "expense-tracker",
+    "nodejs",
+    "express",
+    "postgresql"
+  ],
+  "homepage": "https://github.com/Finsight-CC26-PSU113/finsight-backend#readme",
+  "bugs": {
+    "url": "https://github.com/Finsight-CC26-PSU113/finsight-backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Finsight-CC26-PSU113/finsight-backend.git"
+  },
+  "license": "MIT",
+  "author": "Hidayat Lossen",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest -i",
+    "format": "prettier --write .",
+    "lint": "eslint ."
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    }
+  },
+  "dependencies": {
+    "@prisma/client": "^7.7.0",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.2",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^7.2.0",
+    "babel-jest": "^30.3.0",
+    "eslint": "^10.2.1",
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.14",
+    "prisma": "^7.7.0",
+    "supertest": "^7.2.2"
+  }
+}
