@@ -1,0 +1,257 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum RiskLevel {
+  low
+  medium
+  high
+
+  @@map("risk_level_enum")
+}
+
+enum PaymentMethod {
+  cash
+  debit_card
+  credit_card
+  e_wallet
+  bank_transfer
+
+  @@map("payment_method_enum")
+}
+
+// Optional fixed categories
+enum CategoryName {
+  makanan
+  transport
+  hiburan
+  belanja
+  kesehatan
+  tagihan
+  lainnya
+}
+
+// -----------------------------------------------------------------------------
+// MODELS
+// -----------------------------------------------------------------------------
+
+/// Registered user accounts for the FinSight application.
+model User {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String    @db.VarChar(100)
+  email      String    @unique @db.VarChar(255)
+  password   String    @db.VarChar(255)
+  phone      String?   @db.VarChar(16)
+  birthday   DateTime? @db.Date
+  avatar     String?   @db.Text
+  created_at DateTime  @default(now()) @db.Timestamptz()
+  updated_at DateTime  @updatedAt @db.Timestamptz()
+
+  // Relations
+  risk_profiles             UserRiskProfile[]
+  investment_recommendations InvestmentRecommendation[]
+  transactions              Transaction[]
+  transactions_feedback     TransactionFeedback[]
+  recommendations           Recommendation[]
+  budgets                   Budget[]
+  alerts                    Alert[]
+
+  @@map("users")
+}
+
+/// Expense and income categories shared across the application.
+model Category {
+  id   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name CategoryName @unique
+
+  // Relations
+  transactions          Transaction[]
+  transactions_feedback TransactionFeedback[]
+  recommendations       Recommendation[]
+  budgets               Budget[]
+  alerts                Alert[]
+
+  @@map("categories")
+}
+
+/// Risk-tolerance profile generated from user questionnaire.
+model UserRiskProfile {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String     @db.Uuid
+  risk_level RiskLevel
+  score      Int
+  answer     Json
+  created_at DateTime   @default(now()) @db.Timestamptz()
+  updated_at DateTime   @updatedAt @db.Timestamptz()
+
+  // Relations
+  user                        User                        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  answers                     RiskProfileAnswer[]
+  investment_recommendations  InvestmentRecommendation[]
+
+  @@index([user_id])
+  @@map("user_risk_profiles")
+}
+
+/// Individual answer entries for risk profile questionnaires.
+model RiskProfileAnswer {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_user_id String @db.Uuid
+  question        String @db.VarChar(10)
+  answer          String @db.VarChar(5)
+
+  // Relations
+  profile UserRiskProfile @relation(fields: [profile_user_id], references: [id], onDelete: Cascade)
+
+  @@index([profile_user_id])
+  @@map("risk_profile_answers")
+}
+
+/// AI-generated investment recommendations.
+model InvestmentRecommendation {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String   @db.Uuid
+  risk_profile_id     String   @db.Uuid
+  instrument_type     String   @db.VarChar(255)
+  instrument_name     String   @db.VarChar(255)
+  expected_return_min Float
+  expected_return_max Float
+  created_at          DateTime @default(now()) @db.Timestamptz()
+  updated_at          DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  user         User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  risk_profile UserRiskProfile @relation(fields: [risk_profile_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([risk_profile_id])
+  @@map("investment_recommendations")
+}
+
+/// Financial transaction records.
+model Transaction {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String        @db.Uuid
+  category_id        String        @db.Uuid
+  description        String?       @db.Text
+  amount             Decimal       @db.Decimal(10, 2)
+  payment_method     PaymentMethod
+  transaction_date   DateTime      @db.Date
+  category_predicted String?       @db.VarChar(255)
+  confidence_score   Float?
+  is_anomaly         Boolean       @default(false)
+  anomaly_score      Float?
+  created_at         DateTime      @default(now()) @db.Timestamptz()
+
+  // Relations
+  user     User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category              @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  feedback TransactionFeedback[]
+
+  @@index([user_id])
+  @@index([category_id])
+  @@index([transaction_date])
+  @@map("transactions")
+}
+
+/// User correction feedback for transaction categorisation.
+model TransactionFeedback {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id               String   @db.Uuid
+  transaction_id        String   @db.Uuid
+  corrected_category_id String   @db.Uuid
+  feedback_type         String?  @db.Text
+  created_at            DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  user               User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transaction        Transaction @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
+  corrected_category Category    @relation(fields: [corrected_category_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id])
+  @@index([transaction_id])
+  @@index([corrected_category_id])
+  @@map("transactions_feedback")
+}
+
+/// Personalized financial recommendations.
+model Recommendation {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  category_id String   @db.Uuid
+  type        String   @db.VarChar(255)
+  message     String   @db.VarChar(1000)
+  priority    String   @db.VarChar(50)
+  status      String   @db.VarChar(50)
+  created_at  DateTime @default(now()) @db.Timestamptz()
+  updated_at  DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [category_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id])
+  @@index([category_id])
+  @@map("recommendations")
+}
+
+/// Budget management per category.
+model Budget {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  category_id String   @db.Uuid
+  amount      Decimal  @db.Decimal(10, 2)
+  period      String   @db.VarChar(50)
+  start_date  DateTime @db.Timestamptz()
+  end_date    DateTime @db.Timestamptz()
+  created_at  DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  alerts   Alert[]
+
+  @@index([user_id])
+  @@index([category_id])
+  @@map("budgets")
+}
+
+/// Alert notification for budget thresholds.
+model Alert {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  category_id String    @db.Uuid
+  budget_id   String    @db.Uuid
+  level       String    @db.VarChar(50)
+  message     String    @db.Text
+  percentage  Float
+  is_read     Boolean   @default(false)
+  read_at     DateTime? @db.Timestamptz()
+  created_at  DateTime  @default(now()) @db.Timestamptz()
+
+  // Relations
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  budget   Budget   @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([category_id])
+  @@index([budget_id])
+  @@index([is_read])
+  @@map("alerts")
+}
