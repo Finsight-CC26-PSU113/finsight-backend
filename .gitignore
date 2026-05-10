@@ -24,8 +24,12 @@ Thumbs.db
 .idea/
 .antigravity/
 
-# Prisma
-prisma/migrations/
+# Prisma - hanya ignore database lokal, BUKAN migrations
+prisma/dev.db
+prisma/dev.db-journal
+prisma/.env.local
 
 # Upload files
 uploads/
+
+/src/generated/prisma
