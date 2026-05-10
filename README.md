@@ -7,6 +7,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-24.13.1-339933?logo=nodedotjs)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-5.2.1-000?logo=express)](https://expressjs.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql)](https://postgresql.org)
+[![Prisma](https://img.shields.io/badge/Prisma-3982CE?logo=Prisma&logoColor=white)](https://prisma.io)
 [![JWT](https://img.shields.io/badge/Auth-JWT-000?logo=jsonwebtokens)](https://jwt.io)
 
 > Bagian dari Capstone Project **Coding Camp 2026 powered by DBS Foundation**
@@ -26,6 +27,9 @@ Repo ini berisi source code **backend** Finsight yang menyediakan REST API untuk
 
 ```
 finsight-backend/
+├── prisma/
+│   ├── schema.prisma          # Skema database Prisma
+│   └── seed.js                # Database seeder awal
 ├── src/
 │   ├── config/
 │   │   └── db.js              # PostgreSQL connection pool
@@ -33,21 +37,24 @@ finsight-backend/
 │   │   ├── authController.js       # Register, login, profile
 │   │   ├── transactionController.js # CRUD transaksi
 │   │   └── uploadController.js     # Upload & forward ke ML Service
+│   ├── generated/             # Hasil generate Prisma Client
 │   ├── middleware/
 │   │   ├── auth.js            # JWT middleware
 │   │   └── errorHandler.js    # Global error handler
 │   ├── migrations/
-│   │   └── 001_init.sql       # Schema database
+│   │   └── 001_init.sql       # Schema database (lama)
 │   ├── routes/
 │   │   ├── auth.js
 │   │   ├── transactions.js
 │   │   ├── upload.js
 │   │   └── index.js
 │   ├── uploads/               # File storage (gitignored)
+│   ├── validations/           # Skema validasi request (Joi)
 │   ├── app.js                 # Express setup
 │   └── server.js              # Entry point
 ├── .env.example
-└── package.json
+├── package.json
+└── README.md
 ```
 
 ---
@@ -57,12 +64,14 @@ finsight-backend/
 | Teknologi | Kegunaan |
 |---|---|
 | Express.js | Web framework |
-| PostgreSQL + `pg` | Database relasional |
-| JWT + bcryptjs | Autentikasi & hashing password |
+| PostgreSQL | Database relasional |
+| Prisma ORM | Object-Relational Mapping ke PostgreSQL |
+| JWT + bcrypt | Autentikasi & hashing password |
 | Multer | File upload (struk JPEG/PNG) |
 | Axios | Forward request ke ML Service |
 | Helmet + CORS | Security headers |
 | Morgan | HTTP request logger |
+| Jest + Supertest | API Testing |
 
 ---
 
@@ -84,13 +93,23 @@ npm install
 
 # 3. Setup environment
 cp .env.example .env
-# ← edit .env: isi DB_PASSWORD dan JWT_SECRET
+# Edit file .env dan sesuaikan nilai variabelnya (terutama DATABASE_URL)
 
-# 4. Setup database
-psql -U postgres -c "CREATE DATABASE finsight_db;"
-psql -U postgres -d finsight_db -f src/migrations/001_init.sql
+# 4. Buat Database secara manual (jika user Anda tidak punya hak CREATE DB via Prisma)
+# Masuk ke PostgreSQL terminal:
+psql -U postgres
+# Jalankan perintah:
+# CREATE DATABASE finsight;
+# \q
 
-# 5. Jalankan dev server
+# 5. Generate Prisma Client
+npx prisma generate
+
+# 6. Jalankan migrasi dan seed database
+npx prisma migrate dev --name init
+npx prisma db seed
+
+# 7. Jalankan dev server
 npm run dev
 ```
 
@@ -104,10 +123,11 @@ Server akan berjalan di **http://localhost:3000**
 PORT=3000
 NODE_ENV=development
 
-# Database
+# Database URL untuk Prisma
+DATABASE_URL="postgresql://user:password@localhost:5432/finsight?schema=public"
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=finsight_db
+DB_NAME=finsight
 DB_USER=postgres
 DB_PASSWORD=your_password_here
 
@@ -157,25 +177,15 @@ FRONTEND_URL=http://localhost:5173
 
 ## 🗄️ Database Schema
 
-```sql
-users
-  id            UUID  PK
-  name          VARCHAR
-  email         VARCHAR (unique)
-  password_hash TEXT
-  created_at    TIMESTAMP
+Sistem ini menggunakan Prisma dengan tabel utama:
+- **`User`**: Mengelola data otentikasi (email, password) dan profil pengguna.
+- **`Category`**: Tabel master untuk kategori pendapatan dan pengeluaran.
+- **`Transaction`**: Menyimpan log transaksi, terkait ke `User` dan `Category`.
+- **`Budget`**: Batasan anggaran untuk tiap kategori spesifik per bulan.
+- **`Recommendation` & `InvestmentRecommendation`**: Saran pintar bagi pengguna berdasarkan behavior & profil risikonya.
+- **`Alert`**: Pemberitahuan sistem terkait budget/transaksi abnormal.
 
-transactions
-  id          UUID  PK
-  user_id     UUID  FK → users
-  merchant    VARCHAR
-  amount      DECIMAL
-  category    VARCHAR
-  date        DATE
-  items       JSONB
-  receipt_url TEXT
-  created_at  TIMESTAMP
-```
+Lihat selengkapnya di [prisma/schema.prisma](./prisma/schema.prisma).
 
 ---
 
@@ -184,7 +194,7 @@ transactions
 ```
 Frontend (React :5173)
   └── HTTP → Backend (Express :3000)
-                ├── PostgreSQL (:5432)
+                ├── PostgreSQL (:5432) via Prisma
                 └── ML Service (FastAPI :8000)
                       └── POST /ocr/process
 ```
@@ -197,6 +207,8 @@ Frontend (React :5173)
 |---|---|
 | `npm run dev` | Dev server dengan nodemon (auto-reload) |
 | `npm start` | Production server |
+| `npm test` | Menjalankan testing dengan Jest |
+| `npm run lint` | Linter dengan ESLint |
 
 ---
 
@@ -206,6 +218,8 @@ Backend di-deploy ke **VPS** (Railway / Render / self-hosted).
 
 ```bash
 # Production
+npx prisma generate
+npx prisma migrate deploy
 NODE_ENV=production npm start
 ```
 
