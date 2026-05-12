@@ -70,6 +70,7 @@ model User {
   recommendations           Recommendation[]
   budgets                   Budget[]
   alerts                    Alert[]
+  user_categories           UserCategory[]
 
   @@map("users")
 }
@@ -87,6 +88,20 @@ model Category {
   alerts                Alert[]
 
   @@map("categories")
+}
+
+model UserCategory {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  name       String   @db.VarChar(100)
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([user_id, name])
+  @@index([user_id])
+  @@map("user_categories")
 }
 
 /// Risk-tolerance profile generated from user questionnaire.
@@ -147,6 +162,7 @@ model InvestmentRecommendation {
 model Transaction {
   id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id            String        @db.Uuid
+  user_category_id String? @db.Uuid
   category_id        String        @db.Uuid
   description        String?       @db.Text
   amount             Decimal       @db.Decimal(10, 2)
@@ -159,9 +175,10 @@ model Transaction {
   created_at         DateTime      @default(now()) @db.Timestamptz()
 
   // Relations
-  user     User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  category Category              @relation(fields: [category_id], references: [id], onDelete: Restrict)
-  feedback TransactionFeedback[]
+  user              User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category          Category        @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  user_category     UserCategory? @relation(fields: [user_category_id], references: [id], onDelete: SetNull)
+  feedback          TransactionFeedback[]
 
   @@index([user_id])
   @@index([category_id])
