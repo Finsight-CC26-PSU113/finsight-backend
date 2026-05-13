@@ -89,15 +89,31 @@ export const updateProfile = async (req, res, next) => {
   try {
     const { name, phone, birthday } = req.body;
 
+    const data = {};
+
+    if (name) data.name = name;
+    if (phone) data.phone = phone;
+
+    if (birthday !== undefined) {
+      const date = new Date(birthday);
+
+      if (isNaN(date.getTime())) {
+        return errorResponse(res, 400, 'Invalid birthday format');
+      }
+
+      data.birthday = date;
+    }
+
     const updated = await prisma.user.update({
       where: { id: req.user.id },
-      data: { name, phone, birthday },
+      data,
     });
 
     return successResponse(res, 200, 'Profile updated', {
       user: safeUser(updated),
     });
   } catch (err) {
+    console.error(err); 
     next(err);
   }
 };
