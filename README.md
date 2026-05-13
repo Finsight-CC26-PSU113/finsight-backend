@@ -27,31 +27,39 @@ Repo ini berisi source code **backend** Finsight yang menyediakan REST API untuk
 
 ```
 finsight-backend/
+├── docs/                      # Dokumentasi Proyek & API
+│   ├── api/
+│   │   └── openapi.json       # Dokumentasi OpenAPI (Swagger)
+│   └── README.md              # Panduan penggunaan Swagger di VS Code
 ├── prisma/
+│   ├── migrations/            # Folder migrasi database
 │   ├── schema.prisma          # Skema database Prisma
 │   └── seed.js                # Database seeder awal
 ├── src/
 │   ├── config/
-│   │   └── db.js              # PostgreSQL connection pool
+│   │   ├── database.js        # Konfigurasi koneksi database
+│   │   └── logger.js          # Konfigurasi logging
 │   ├── controllers/
-│   │   ├── authController.js       # Register, login, profile
-│   │   ├── transactionController.js # CRUD transaksi
-│   │   └── uploadController.js     # Upload & forward ke ML Service
+│   │   ├── authController.js       # Logika Register, Login, Profile
+│   │   ├── categoryController.js   # Logika CRUD Kategori
+│   │   └── transactionController.js # Logika CRUD Transaksi
 │   ├── generated/             # Hasil generate Prisma Client
 │   ├── middleware/
-│   │   ├── auth.js            # JWT middleware
-│   │   └── errorHandler.js    # Global error handler
-│   ├── migrations/
-│   │   └── 001_init.sql       # Schema database (lama)
+│   │   ├── auth.js            # Middleware verifikasi JWT
+│   │   ├── errorHandler.js    # Global error handler
+│   │   └── validate.js        # Middleware validasi input Joi
 │   ├── routes/
-│   │   ├── auth.js
-│   │   ├── transactions.js
-│   │   ├── upload.js
-│   │   └── index.js
-│   ├── uploads/               # File storage (gitignored)
-│   ├── validations/           # Skema validasi request (Joi)
-│   ├── app.js                 # Express setup
-│   └── server.js              # Entry point
+│   │   ├── authRoutes.js      # Rute terkait autentikasi
+│   │   ├── categoryRoutes.js  # Rute terkait kategori
+│   │   └── transactionRoutes.js # Rute terkait transaksi
+│   ├── uploads/               # Tempat penyimpanan file struk
+│   ├── utils/
+│   │   └── response.js        # Standarisasi response API
+│   ├── validations/
+│   │   ├── authValidation.js   # Skema validasi data Auth
+│   │   └── categoryValidation.js # Skema validasi data Kategori
+│   ├── app.js                 # Setup Express
+│   └── server.js              # Entry point aplikasi
 ├── .env.example
 ├── package.json
 └── README.md
@@ -149,29 +157,22 @@ FRONTEND_URL=http://localhost:5173
 ### Auth
 | Method | Endpoint | Auth | Deskripsi |
 |---|---|---|---|
-| POST | `/api/v1/auth/register` | ❌ | Daftar akun baru |
-| POST | `/api/v1/auth/login` | ❌ | Login, dapat JWT token |
-| GET | `/api/v1/auth/profile` | ✅ | Data profil user |
+| POST | `/register` | ❌ | Daftar akun baru |
+| POST | `/login` | ❌ | Login akun |
+| POST | `/logout` | ✅ | Logout pengguna |
+| GET | `/profile` | ✅ | Mendapatkan data profil user |
+| PATCH | `/profile` | ✅ | Memperbarui profil user |
 
-### Transaksi
+### Category
 | Method | Endpoint | Auth | Deskripsi |
 |---|---|---|---|
-| GET | `/api/v1/transactions` | ✅ | Semua transaksi user |
-| GET | `/api/v1/transactions/:id` | ✅ | Detail transaksi |
-| POST | `/api/v1/transactions` | ✅ | Buat transaksi manual |
-| DELETE | `/api/v1/transactions/:id` | ✅ | Hapus transaksi |
+| GET | `/categories` | ✅ | Mengambil kategori default sistem |
+| GET | `/categories/custom` | ✅ | Mengambil kategori khusus (custom) pengguna |
+| POST | `/categories/custom` | ✅ | Membuat kategori khusus baru |
+| PATCH | `/categories/custom/:id` | ✅ | Memperbarui kategori khusus |
+| DELETE | `/categories/custom/:id` | ✅ | Menghapus kategori khusus |
 
-### Upload
-| Method | Endpoint | Auth | Deskripsi |
-|---|---|---|---|
-| POST | `/api/v1/upload/receipt` | ✅ | Upload foto struk → ML Service |
-
-### Lainnya
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/api/v1/health` | Cek status server |
-
-> ✅ = Butuh `Authorization: Bearer <token>` di header
+> ✅ = Butuh `Authorization: Bearer <token>` atau Token Cookie
 
 ---
 
