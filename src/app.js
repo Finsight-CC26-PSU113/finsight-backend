@@ -4,11 +4,16 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
+import budgetRoutes from './routes/budgetRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import recommendationRoutes from './routes/recommendationRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
 
 const app = express();
+app.disable('x-powered-by');
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -20,6 +25,10 @@ app.use(cookieParser());
 
 app.use(authRoutes);
 app.use(categoryRoutes);
+app.use(transactionRoutes);
+app.use(budgetRoutes);
+app.use(dashboardRoutes);
+app.use(recommendationRoutes);
 
 app.use(errorHandler);
 
