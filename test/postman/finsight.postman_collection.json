@@ -71,9 +71,9 @@
               "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"budi@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"081234567890\",\n  \"birthday\": \"2000-05-13\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/register",
+              "raw": "{{base_url}}/api/auth/register",
               "host": ["{{base_url}}"],
-              "path": ["register"]
+              "path": ["api", "auth", "register"]
             }
           }
         },
@@ -119,9 +119,9 @@
               "raw": "{\n  \"email\": \"budi@example.com\",\n  \"password\": \"password123\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/login",
+              "raw": "{{base_url}}/api/auth/login",
               "host": ["{{base_url}}"],
-              "path": ["login"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -145,9 +145,9 @@
           "request": {
             "method": "POST",
             "url": {
-              "raw": "{{base_url}}/logout",
+              "raw": "{{base_url}}/api/auth/logout",
               "host": ["{{base_url}}"],
-              "path": ["logout"]
+              "path": ["api", "auth", "logout"]
             }
           }
         }
@@ -184,9 +184,9 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{base_url}}/profile",
+              "raw": "{{base_url}}/api/auth/profile",
               "host": ["{{base_url}}"],
-              "path": ["profile"]
+              "path": ["api", "auth", "profile"]
             }
           }
         },
@@ -218,9 +218,9 @@
               "raw": "{\n  \"name\": \"Budi Updated\",\n  \"phone\": \"089876543210\",\n  \"birthday\": \"2000-01-01\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/profile",
+              "raw": "{{base_url}}/api/auth/profile",
               "host": ["{{base_url}}"],
-              "path": ["profile"]
+              "path": ["api", "auth", "profile"]
             }
           }
         }
@@ -245,7 +245,14 @@
                   "",
                   "pm.test('Categories is array', function () {",
                   "    pm.expect(response.data.categories).to.be.an('array');",
-                  "});"
+                  "});",
+                  "",
+                  "if (response.data?.categories?.length) {",
+                  "    const matchedCategory = response.data.categories.find((category) => category.name === 'makanan') || response.data.categories[0];",
+                  "    if (matchedCategory?.id) {",
+                  "        pm.environment.set('system_category_id', matchedCategory.id);",
+                  "    }",
+                  "}"
                 ]
               }
             }
@@ -307,7 +314,7 @@
                   "});",
                   "",
                   "if (response.data?.category?.id) {",
-                  "    pm.environment.set('category_id', response.data.category.id);",
+                  "    pm.environment.set('custom_category_id', response.data.category.id);",
                   "}"
                 ]
               }
@@ -360,9 +367,9 @@
               "raw": "{\n  \"name\": \"tabungan\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/categories/custom/{{category_id}}",
+              "raw": "{{base_url}}/categories/custom/{{custom_category_id}}",
               "host": ["{{base_url}}"],
-              "path": ["categories", "custom", "{{category_id}}"]
+              "path": ["categories", "custom", "{{custom_category_id}}"]
             }
           }
         },
@@ -378,7 +385,7 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.environment.unset('category_id');"
+                  "pm.environment.unset('custom_category_id');"
                 ]
               }
             }
@@ -386,9 +393,523 @@
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{base_url}}/categories/custom/{{category_id}}",
+              "raw": "{{base_url}}/categories/custom/{{custom_category_id}}",
               "host": ["{{base_url}}"],
-              "path": ["categories", "custom", "{{category_id}}"]
+              "path": ["categories", "custom", "{{custom_category_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get Transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/transactions?transaction_type=expense&start_date=2026-05-01&end_date=2026-05-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions"],
+              "query": [
+                { "key": "transaction_type", "value": "expense" },
+                { "key": "start_date", "value": "2026-05-01" },
+                { "key": "end_date", "value": "2026-05-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Transaction created', function () {",
+                  "    pm.expect(response.data.transaction).to.exist;",
+                  "});",
+                  "",
+                  "if (response.data?.transaction?.id) {",
+                  "    pm.environment.set('transaction_id', response.data.transaction.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_type\": \"expense\",\n  \"amount\": 15000,\n  \"transaction_date\": \"2026-05-22\",\n  \"payment_method\": \"cash\",\n  \"category_id\": \"{{system_category_id}}\",\n  \"description\": \"warteg berkah jaya\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "Get Transaction By ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const transactionId = pm.environment.get('transaction_id');",
+                  "if (!transactionId) {",
+                  "    throw new Error('transaction_id is empty. Run Create Transaction first.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Transaction",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const transactionId = pm.environment.get('transaction_id');",
+                  "if (!transactionId) {",
+                  "    throw new Error('transaction_id is empty. Run Create Transaction first.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 17000,\n  \"description\": \"warteg berkah jaya updated\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Classify Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"warteg berkah jaya\",\n  \"amount\": 15000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions/classify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "classify"]
+            }
+          }
+        },
+        {
+          "name": "Override Category",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const transactionId = pm.environment.get('transaction_id');",
+                  "if (!transactionId) {",
+                  "    throw new Error('transaction_id is empty. Run Create Transaction first.');",
+                  "}",
+                  "const categoryId = pm.environment.get('system_category_id');",
+                  "if (!categoryId) {",
+                  "    throw new Error('system_category_id is empty. Run Get Default Categories first.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"corrected_category_id\": \"{{system_category_id}}\",\n  \"feedback_type\": \"user_override\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}/category",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}", "category"]
+            }
+          }
+        },
+        {
+          "name": "Anomaly Feedback",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const transactionId = pm.environment.get('transaction_id');",
+                  "if (!transactionId) {",
+                  "    throw new Error('transaction_id is empty. Run Create Transaction first.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_anomaly\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}/anomaly-feedback",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}", "anomaly-feedback"]
+            }
+          }
+        },
+        {
+          "name": "Delete Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.environment.unset('transaction_id');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Budgets",
+      "item": [
+        {
+          "name": "Get Budgets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/budgets?period=2026-05",
+              "host": ["{{base_url}}"],
+              "path": ["api", "budgets"],
+              "query": [{ "key": "period", "value": "2026-05" }]
+            }
+          }
+        },
+        {
+          "name": "Create Budget",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "if (response.data?.budget?.id) {",
+                  "    pm.environment.set('budget_id', response.data.budget.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": \"{{system_category_id}}\",\n  \"amount\": 500000,\n  \"period\": \"2026-05\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/budgets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "budgets"]
+            }
+          }
+        },
+        {
+          "name": "Update Budget",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 650000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/budgets/{{budget_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "budgets", "{{budget_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Budget",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.environment.unset('budget_id');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/budgets/{{budget_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "budgets", "{{budget_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/summary",
+              "host": ["{{base_url}}"],
+              "path": ["api", "dashboard", "summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "Get Recommendations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "if (response.data?.recommendations?.length && response.data.recommendations[0]?.id) {",
+                  "    pm.environment.set('recommendation_id', response.data.recommendations[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/recommendations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recommendations"]
+            }
+          }
+        },
+        {
+          "name": "Update Recommendation Status",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const recommendationId = pm.environment.get('recommendation_id');",
+                  "if (!recommendationId) {",
+                  "    throw new Error('recommendation_id is empty. Run Get Recommendations first and ensure the user has recommendation data.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/recommendations/{{recommendation_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recommendations", "{{recommendation_id}}", "status"]
             }
           }
         }
