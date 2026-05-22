@@ -29,9 +29,6 @@
     "format": "prettier --write ./src",
     "lint": "eslint ./src"
   },
-  "prisma": {
-    "seed": "node prisma/seed.js"
-  },
   "jest": {
     "testEnvironment": "node",
     "transform": {
@@ -39,7 +36,8 @@
     }
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.19.3",
+    "prisma": "^6.19.3",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -47,7 +45,6 @@
     "express": "^5.2.1",
     "joi": "^18.1.2",
     "jsonwebtoken": "^9.0.3",
-    "prisma": "^5.22.0",
     "winston": "^3.19.0"
   },
   "devDependencies": {

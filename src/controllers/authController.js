@@ -17,8 +17,22 @@ const signToken = (id) =>
   });
 
 const safeUser = (user) => {
-  const { password, ...rest } = user;
+  const rest = { ...user };
+  delete rest.password;
   return rest;
+};
+
+const parseBirthday = (birthday) => {
+  if (birthday === undefined || birthday === null || birthday === '') {
+    return undefined;
+  }
+
+  const date = new Date(birthday);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
 };
 
 export const register = async (req, res, next) => {
@@ -31,9 +45,20 @@ export const register = async (req, res, next) => {
     }
 
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+    const parsedBirthday = parseBirthday(birthday);
+
+    if (parsedBirthday === null) {
+      return errorResponse(res, 400, 'Invalid birthday format');
+    }
 
     const user = await prisma.user.create({
-      data: { name, email, password: hashed, phone, birthday },
+      data: {
+        name,
+        email,
+        password: hashed,
+        phone,
+        ...(parsedBirthday !== undefined ? { birthday: parsedBirthday } : {}),
+      },
     });
 
     const token = signToken(user.id);
@@ -94,14 +119,14 @@ export const updateProfile = async (req, res, next) => {
     if (name) data.name = name;
     if (phone) data.phone = phone;
 
-    if (birthday !== undefined) {
-      const date = new Date(birthday);
+    const parsedBirthday = parseBirthday(birthday);
 
-      if (isNaN(date.getTime())) {
-        return errorResponse(res, 400, 'Invalid birthday format');
-      }
+    if (parsedBirthday === null) {
+      return errorResponse(res, 400, 'Invalid birthday format');
+    }
 
-      data.birthday = date;
+    if (parsedBirthday !== undefined) {
+      data.birthday = parsedBirthday;
     }
 
     const updated = await prisma.user.update({
@@ -113,7 +138,7 @@ export const updateProfile = async (req, res, next) => {
       user: safeUser(updated),
     });
   } catch (err) {
-    console.error(err); 
+    console.error(err);
     next(err);
   }
 };
