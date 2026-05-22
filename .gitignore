@@ -33,3 +33,4 @@ prisma/.env.local
 uploads/
 
 /src/generated/prisma
+test/bruno

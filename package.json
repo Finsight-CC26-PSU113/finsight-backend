@@ -29,9 +29,6 @@
     "format": "prettier --write ./src",
     "lint": "eslint ./src"
   },
-  "prisma": {
-    "seed": "node prisma/seed.js"
-  },
   "jest": {
     "testEnvironment": "node",
     "transform": {
