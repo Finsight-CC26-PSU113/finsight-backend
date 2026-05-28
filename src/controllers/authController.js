@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import path from 'node:path';
 import prisma from '../config/database.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
@@ -116,8 +117,8 @@ export const updateProfile = async (req, res, next) => {
 
     const data = {};
 
-    if (name) data.name = name;
-    if (phone) data.phone = phone;
+    if (typeof name === 'string' && name.trim()) data.name = name.trim();
+    if (typeof phone === 'string' && phone.trim()) data.phone = phone.trim();
     if (avatar !== undefined) data.avatar = avatar;
     if (cover_image !== undefined) data.cover_image = cover_image;
 
@@ -131,6 +132,10 @@ export const updateProfile = async (req, res, next) => {
       data.birthday = parsedBirthday;
     }
 
+    if (Object.keys(data).length === 0) {
+      return errorResponse(res, 400, 'No profile fields provided to update');
+    }
+
     const updated = await prisma.user.update({
       where: { id: req.user.id },
       data,
@@ -141,6 +146,32 @@ export const updateProfile = async (req, res, next) => {
     });
   } catch (err) {
     console.error(err);
+    next(err);
+  }
+};
+
+export const uploadAvatar = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, 400, 'Avatar image is required');
+    }
+
+    if (!req.file.mimetype?.toLowerCase().startsWith('image/')) {
+      return errorResponse(res, 400, 'Only image files are supported');
+    }
+
+    const avatarPath = path.posix.join('uploads', 'profile', req.file.filename);
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { avatar: avatarPath },
+    });
+
+    return successResponse(res, 200, 'Avatar uploaded successfully', {
+      user: safeUser(updated),
+      avatar: avatarPath,
+    });
+  } catch (err) {
     next(err);
   }
 };
