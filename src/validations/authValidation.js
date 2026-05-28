@@ -18,3 +18,13 @@ export const updateProfileSchema = Joi.object({
   phone: Joi.string().max(16).optional(),
   birthday: Joi.date().iso().optional(),
 }).min(1);
+
+export const forgotPasswordSchema = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().min(8).max(255).required(),
+});
+
+export const resetPasswordSchema = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().min(8).max(255).required(),
+});

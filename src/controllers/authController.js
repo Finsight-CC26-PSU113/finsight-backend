@@ -112,12 +112,14 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, birthday } = req.body;
+    const { name, phone, birthday, avatar, cover_image } = req.body;
 
     const data = {};
 
     if (name) data.name = name;
     if (phone) data.phone = phone;
+    if (avatar !== undefined) data.avatar = avatar;
+    if (cover_image !== undefined) data.cover_image = cover_image;
 
     const parsedBirthday = parseBirthday(birthday);
 
@@ -139,6 +141,52 @@ export const updateProfile = async (req, res, next) => {
     });
   } catch (err) {
     console.error(err);
+    next(err);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return errorResponse(res, 404, 'Email not found');
+    }
+
+    const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed },
+    });
+
+    return successResponse(res, 200, 'Password updated successfully', {
+      user: safeUser(user),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return errorResponse(res, 404, 'Email not found');
+    }
+
+    const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed },
+    });
+
+    return successResponse(res, 200, 'Password updated successfully');
+  } catch (err) {
     next(err);
   }
 };
