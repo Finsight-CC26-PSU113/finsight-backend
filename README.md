@@ -19,7 +19,7 @@
 
 ## 📖 Tentang
 
-Repo ini berisi source code **backend** Finsight yang menyediakan REST API untuk autentikasi, kategori, transaksi, budget, dashboard summary, rekomendasi, dan integrasi dengan service AI untuk klasifikasi transaksi.
+Repo ini berisi source code **backend** Finsight yang menyediakan REST API untuk autentikasi, kategori, transaksi, budget, dashboard summary, rekomendasi, dan integrasi dengan service AI untuk klasifikasi transaksi serta OCR struk.
 
 ---
 
@@ -195,6 +195,15 @@ CLIENT_URL=http://localhost:5173
 | PUT    | `/api/transactions/:id/category`         | ✅   | Override kategori hasil klasifikasi   |
 | PUT    | `/api/transactions/:id/anomaly-feedback` | ✅   | Feedback flag anomali transaksi       |
 
+### Receipt OCR
+
+| Method | Endpoint    | Auth | Deskripsi                                      |
+| ------ | ----------- | ---- | ---------------------------------------------- |
+| POST   | `/api/scan` | ✅   | Proxy OCR struk ke ML service dan simpan hasil |
+| POST   | `/scan`     | ✅   | Alias route yang sama untuk kompatibilitas     |
+
+> Route OCR yang dipakai backend mengikuti dokumentasi service ML di `docs/API.md` dan `docs/README.md`, jadi tidak perlu variabel env terpisah.
+
 ### Budget
 
 | Method | Endpoint           | Auth | Deskripsi                              |
@@ -245,7 +254,8 @@ Frontend (React :5173)
   └── HTTP → Backend (Express :3000)
                     ├── PostgreSQL (:5432) via Prisma
                     └── AI Service (FastAPI :8000)
-                      └── POST /predict
+                      ├── POST /predict  (klasifikasi transaksi)
+                      └── POST /api/scan (OCR struk)
 ```
 
 ---
