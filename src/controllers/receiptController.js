@@ -4,8 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 const AI_SERVICE_URL =
-  process.env.AI_SERVICE_URL || process.env.ML_SERVICE_URL || 'http://localhost:8000';
-const OCR_API_PATH = '/api/scan';
+  process.env.AI_SERVICE_URL || process.env.ML_SERVICE_URL || 'http://localhost:5000';
+const OCR_API_PATH = '/api/process';
 
 const isSupportedMimeType = (mimeType = '') => {
   const normalized = mimeType.toLowerCase();
@@ -30,23 +30,42 @@ export const scanReceipt = async (req, res, next) => {
     }
 
     const formData = new FormData();
-    formData.append(
-      'image',
-      new Blob([uploadedBuffer], { type: image.mimetype }),
-      image.originalname
-    );
+    const filename = image.originalname || 'receipt.jpg';
+    const mime = image.mimetype || 'image/jpeg';
 
-    const response = await fetch(`${AI_SERVICE_URL}${OCR_API_PATH}`, {
-      method: 'POST',
-      body: formData,
-      signal: AbortSignal.timeout(20000),
-    });
+    if (typeof File !== 'undefined') {
+      formData.append('image', new File([uploadedBuffer], filename, { type: mime }));
+    } else {
+      formData.append('image', new Blob([uploadedBuffer], { type: mime }), filename);
+    }
+
+    let response;
+    try {
+      response = await fetch(`${AI_SERVICE_URL}${OCR_API_PATH}`, {
+        method: 'POST',
+        body: formData,
+        signal: AbortSignal.timeout(20000),
+      });
+    } catch (fetchError) {
+      return errorResponse(
+        res,
+        503,
+        `OCR service is not reachable. Make sure the ML service is running at ${AI_SERVICE_URL}.`
+      );
+    }
 
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
       const message = payload?.detail || payload?.message || 'Failed to scan receipt';
-      return errorResponse(res, response.status, message);
+      const statusCode = response.status >= 500 ? 503 : response.status;
+      return errorResponse(
+        res,
+        statusCode,
+        statusCode === 503 && response.status >= 500
+          ? `OCR service error. Make sure the ML service is running correctly at ${AI_SERVICE_URL}.`
+          : message
+      );
     }
 
     const scan = payload?.data?.scan || payload?.scan || payload;
