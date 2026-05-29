@@ -87,15 +87,21 @@ enum RecommendationPriority {
 
 /// Registered user accounts for the FinSight application.
 model User {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String    @db.VarChar(100)
-  email      String    @unique @db.VarChar(255)
-  password   String    @db.VarChar(255)
-  phone      String?   @db.VarChar(16)
-  birthday   DateTime? @db.Date
-  avatar     String?   @db.Text
-  created_at DateTime  @default(now()) @db.Timestamptz()
-  updated_at DateTime  @updatedAt @db.Timestamptz()
+  id                          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                        String    @db.VarChar(100)
+  email                       String    @unique @db.VarChar(255)
+  password                    String    @db.VarChar(255)
+  phone                       String?   @db.VarChar(16)
+  birthday                    DateTime? @db.Date
+  avatar                      String?   @db.Text
+  push_notifications_enabled  Boolean   @default(true)
+  email_notifications_enabled Boolean   @default(false)
+  investment_portfolio_value  Decimal   @default(0) @db.Decimal(15, 2)
+  financial_goal_name         String?   @db.VarChar(100)
+  financial_goal_target       Decimal?  @db.Decimal(15, 2)
+  financial_goal_saved        Decimal?  @db.Decimal(15, 2)
+  created_at                  DateTime  @default(now()) @db.Timestamptz()
+  updated_at                  DateTime  @updatedAt @db.Timestamptz()
 
   // Relations
   risk_profiles              UserRiskProfile[]
@@ -145,21 +151,21 @@ model UserCategory {
 /// Jika type=income: category_id, user_category_id, category_predicted, confidence_score,
 /// is_anomaly, dan anomaly_score diabaikan / null.
 model Transaction {
-  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String          @db.Uuid
-  transaction_type TransactionType @default(expense)
-  category_id      String?         @db.Uuid
-  user_category_id String?         @db.Uuid
-  description      String?         @db.Text
-  amount           Decimal         @db.Decimal(15, 2)
-  payment_method   PaymentMethod
-  transaction_date DateTime        @db.Date
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String          @db.Uuid
+  transaction_type   TransactionType @default(expense)
+  category_id        String?         @db.Uuid
+  user_category_id   String?         @db.Uuid
+  description        String?         @db.Text
+  amount             Decimal         @db.Decimal(15, 2)
+  payment_method     PaymentMethod
+  transaction_date   DateTime        @db.Date
   // AI fields — diisi oleh ML service, null untuk income
-  category_predicted String?       @db.VarChar(255)
+  category_predicted String?         @db.VarChar(255)
   confidence_score   Float?
-  is_anomaly         Boolean       @default(false)
+  is_anomaly         Boolean         @default(false)
   anomaly_score      Float?
-  created_at         DateTime      @default(now()) @db.Timestamptz()
+  created_at         DateTime        @default(now()) @db.Timestamptz()
 
   // Relations
   user          User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)

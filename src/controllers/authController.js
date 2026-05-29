@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import path from 'node:path';
 import prisma from '../config/database.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
@@ -112,12 +113,44 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, birthday } = req.body;
+    const {
+      name,
+      phone,
+      birthday,
+      avatar,
+      cover_image,
+      push_notifications_enabled,
+      email_notifications_enabled,
+      investment_portfolio_value,
+      financial_goal_name,
+      financial_goal_target,
+      financial_goal_saved,
+    } = req.body;
 
     const data = {};
 
-    if (name) data.name = name;
-    if (phone) data.phone = phone;
+    if (typeof name === 'string' && name.trim()) data.name = name.trim();
+    if (typeof phone === 'string' && phone.trim()) data.phone = phone.trim();
+    if (avatar !== undefined) data.avatar = avatar;
+    if (cover_image !== undefined) data.cover_image = cover_image;
+    if (push_notifications_enabled !== undefined)
+      data.push_notifications_enabled = Boolean(push_notifications_enabled);
+    if (email_notifications_enabled !== undefined)
+      data.email_notifications_enabled = Boolean(email_notifications_enabled);
+    if (investment_portfolio_value !== undefined)
+      data.investment_portfolio_value = Number(investment_portfolio_value);
+    if (typeof financial_goal_name === 'string')
+      data.financial_goal_name = financial_goal_name.trim() || null;
+    if (financial_goal_target !== undefined)
+      data.financial_goal_target =
+        financial_goal_target === null || financial_goal_target === ''
+          ? null
+          : Number(financial_goal_target);
+    if (financial_goal_saved !== undefined)
+      data.financial_goal_saved =
+        financial_goal_saved === null || financial_goal_saved === ''
+          ? null
+          : Number(financial_goal_saved);
 
     const parsedBirthday = parseBirthday(birthday);
 
@@ -127,6 +160,10 @@ export const updateProfile = async (req, res, next) => {
 
     if (parsedBirthday !== undefined) {
       data.birthday = parsedBirthday;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return errorResponse(res, 400, 'No profile fields provided to update');
     }
 
     const updated = await prisma.user.update({
@@ -139,6 +176,78 @@ export const updateProfile = async (req, res, next) => {
     });
   } catch (err) {
     console.error(err);
+    next(err);
+  }
+};
+
+export const uploadAvatar = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, 400, 'Avatar image is required');
+    }
+
+    if (!req.file.mimetype?.toLowerCase().startsWith('image/')) {
+      return errorResponse(res, 400, 'Only image files are supported');
+    }
+
+    const avatarPath = path.posix.join('uploads', 'profile', req.file.filename);
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { avatar: avatarPath },
+    });
+
+    return successResponse(res, 200, 'Avatar uploaded successfully', {
+      user: safeUser(updated),
+      avatar: avatarPath,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return errorResponse(res, 404, 'Email not found');
+    }
+
+    const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed },
+    });
+
+    return successResponse(res, 200, 'Password updated successfully', {
+      user: safeUser(user),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return errorResponse(res, 404, 'Email not found');
+    }
+
+    const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed },
+    });
+
+    return successResponse(res, 200, 'Password updated successfully');
+  } catch (err) {
     next(err);
   }
 };
