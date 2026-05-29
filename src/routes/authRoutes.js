@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import multer from 'multer';
 import {
   register,
@@ -13,19 +12,32 @@ import {
 import validate from '../middleware/validate.js';
 import authenticate from '../middleware/auth.js';
 import { registerSchema, loginSchema, updateProfileSchema } from '../validations/authValidation.js';
+import { createMimeTypeFilter, createShortUploadFilename } from '../utils/upload.js';
 
 const router = Router();
+const profileImageMimeTypes = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/svg+xml',
+  'image/heic',
+  'image/heif',
+  'image/webp',
+]);
 
 const avatarStorage = multer.diskStorage({
   destination: path.resolve(process.cwd(), 'src', 'uploads', 'profile'),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-    cb(null, `${req.user.id}-${Date.now()}-${randomUUID()}${ext}`);
+    cb(null, createShortUploadFilename(`av-${req.user.id.slice(0, 8)}`, file.originalname));
   },
 });
 
 const uploadAvatarMiddleware = multer({
   storage: avatarStorage,
+  fileFilter: createMimeTypeFilter(
+    profileImageMimeTypes,
+    'Only PNG, JPG, JPEG, SVG, HEIC, HEIF, and WEBP images are allowed'
+  ),
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
