@@ -113,7 +113,19 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, birthday, avatar, cover_image } = req.body;
+    const {
+      name,
+      phone,
+      birthday,
+      avatar,
+      cover_image,
+      push_notifications_enabled,
+      email_notifications_enabled,
+      investment_portfolio_value,
+      financial_goal_name,
+      financial_goal_target,
+      financial_goal_saved,
+    } = req.body;
 
     const data = {};
 
@@ -121,6 +133,24 @@ export const updateProfile = async (req, res, next) => {
     if (typeof phone === 'string' && phone.trim()) data.phone = phone.trim();
     if (avatar !== undefined) data.avatar = avatar;
     if (cover_image !== undefined) data.cover_image = cover_image;
+    if (push_notifications_enabled !== undefined)
+      data.push_notifications_enabled = Boolean(push_notifications_enabled);
+    if (email_notifications_enabled !== undefined)
+      data.email_notifications_enabled = Boolean(email_notifications_enabled);
+    if (investment_portfolio_value !== undefined)
+      data.investment_portfolio_value = Number(investment_portfolio_value);
+    if (typeof financial_goal_name === 'string')
+      data.financial_goal_name = financial_goal_name.trim() || null;
+    if (financial_goal_target !== undefined)
+      data.financial_goal_target =
+        financial_goal_target === null || financial_goal_target === ''
+          ? null
+          : Number(financial_goal_target);
+    if (financial_goal_saved !== undefined)
+      data.financial_goal_saved =
+        financial_goal_saved === null || financial_goal_saved === ''
+          ? null
+          : Number(financial_goal_saved);
 
     const parsedBirthday = parseBirthday(birthday);
 
