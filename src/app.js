@@ -11,6 +11,7 @@ import budgetRoutes from './routes/budgetRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import receiptRoutes from './routes/receiptRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
+import investmentRoutes from './routes/investmentRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -37,6 +38,7 @@ app.use(budgetRoutes);
 app.use(dashboardRoutes);
 app.use(receiptRoutes);
 app.use(recommendationRoutes);
+app.use(investmentRoutes);
 
 app.use(errorHandler);
 
