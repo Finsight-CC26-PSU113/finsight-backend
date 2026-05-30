@@ -44,13 +44,13 @@ export const scanReceipt = async (req, res, next) => {
       response = await fetch(`${AI_SERVICE_URL}${OCR_API_PATH}`, {
         method: 'POST',
         body: formData,
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(60000),
       });
     } catch (fetchError) {
       return errorResponse(
         res,
         503,
-        `OCR service is not reachable. Make sure the ML service is running at ${AI_SERVICE_URL}.`
+        'OCR service is temporarily unavailable. Please try again in a moment.'
       );
     }
 
@@ -63,7 +63,7 @@ export const scanReceipt = async (req, res, next) => {
         res,
         statusCode,
         statusCode === 503 && response.status >= 500
-          ? `OCR service error. Make sure the ML service is running correctly at ${AI_SERVICE_URL}.`
+          ? 'OCR service is temporarily unavailable. Please try again in a moment.'
           : message
       );
     }
