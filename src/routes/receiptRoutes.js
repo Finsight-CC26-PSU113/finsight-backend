@@ -6,14 +6,7 @@ import authenticate from '../middleware/auth.js';
 import { createMimeTypeFilter, createShortUploadFilename } from '../utils/upload.js';
 
 const router = Router();
-const receiptImageMimeTypes = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'image/heic',
-  'image/heif',
-  'image/webp',
-]);
+const receiptImageMimeTypes = new Set(['image/png', 'image/jpeg', 'image/jpg']);
 const upload = multer({
   storage: multer.diskStorage({
     destination: path.resolve(process.cwd(), 'src', 'uploads', 'ocr'),
@@ -24,9 +17,9 @@ const upload = multer({
   }),
   fileFilter: createMimeTypeFilter(
     receiptImageMimeTypes,
-    'Only PNG, JPG, JPEG, HEIC, HEIF, and WEBP images are allowed'
+    'Only PNG, JPG, and JPEG images are allowed'
   ),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 router.post('/api/scan', authenticate, upload.single('image'), scanReceipt);
