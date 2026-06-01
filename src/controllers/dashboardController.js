@@ -46,7 +46,28 @@ export const getDashboardSummary = async (req, res, next) => {
 
     const total_income = Number(incomeAgg._sum.amount || 0);
     const total_expense = Number(expenseAgg._sum.amount || 0);
-    const balance = total_income - total_expense;
+    // Compute overall user balance (aggregate of all-time incomes minus expenses)
+    const incomeAllAgg = await prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: {
+        user_id: userId,
+        transaction_type: 'income',
+      },
+    });
+
+    const expenseAllAgg = await prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: {
+        user_id: userId,
+        transaction_type: 'expense',
+      },
+    });
+
+    const total_income_all = Number(incomeAllAgg._sum.amount || 0);
+    const total_expense_all = Number(expenseAllAgg._sum.amount || 0);
+
+    // Balance should represent the user's aggregate balance across all accounts (all-time)
+    const balance = total_income_all - total_expense_all;
 
     // 3. Top Categories Expenses
     const categoryGroup = await prisma.transaction.groupBy({
