@@ -81,6 +81,16 @@ enum RecommendationPriority {
   @@map("recommendation_priority_enum")
 }
 
+/// Kategori produk investasi (catalog + portfolio tracking).
+enum InvestmentCategory {
+  stock
+  mutual_fund
+  bond
+  gold
+
+  @@map("investment_category_enum")
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -112,6 +122,7 @@ model User {
   budgets                    Budget[]
   alerts                     Alert[]
   user_categories            UserCategory[]
+  portfolio_positions        PortfolioPosition[]
 
   @@map("users")
 }
@@ -326,4 +337,52 @@ model InvestmentRecommendation {
   @@index([user_id])
   @@index([risk_profile_id])
   @@map("investment_recommendations")
+}
+
+/// Catalog produk investasi (info-only, harga realtime via quotes API).
+model InvestmentProduct {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category    InvestmentCategory
+  symbol      String             @unique @db.VarChar(64)
+  name        String             @db.VarChar(255)
+  provider    String?            @db.VarChar(100)
+  currency    String             @default("IDR") @db.VarChar(10)
+  risk_level  RiskLevel?
+  // Optional product details (for detail page)
+  tenor_months Int?
+  coupon_rate  Float?
+  // Historical return snapshot (optional; can be null if provider not ready)
+  return_1y   Float?
+  return_3y   Float?
+  meta        Json?
+  created_at  DateTime           @default(now()) @db.Timestamptz()
+  updated_at  DateTime           @updatedAt @db.Timestamptz()
+
+  // Relations
+  positions PortfolioPosition[]
+
+  @@index([category])
+  @@index([symbol])
+  @@map("investment_products")
+}
+
+/// Posisi portofolio investasi manual per user.
+model PortfolioPosition {
+  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String             @db.Uuid
+  product_id String             @db.Uuid
+  quantity   Decimal            @db.Decimal(20, 8)
+  avg_cost   Decimal?           @db.Decimal(20, 8)
+  purchased_at DateTime?        @db.Timestamptz()
+  created_at DateTime           @default(now()) @db.Timestamptz()
+  updated_at DateTime           @updatedAt @db.Timestamptz()
+
+  // Relations
+  user    User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product InvestmentProduct @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id])
+  @@index([product_id])
+  @@unique([user_id, product_id])
+  @@map("portfolio_positions")
 }
