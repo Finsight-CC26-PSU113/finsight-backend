@@ -165,6 +165,7 @@ export const getTransactions = async (req, res, next) => {
       include: {
         category: true,
         user_category: true,
+        savings_goal: true,
       },
       orderBy: {
         transaction_date: 'desc',
