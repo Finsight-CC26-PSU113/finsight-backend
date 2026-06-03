@@ -1,5 +1,8 @@
-import { successResponse } from '../utils/response.js';
+import { successResponse, errorResponse } from '../utils/response.js';
 import prisma from '../config/database.js';
+
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isUuid = (value) => typeof value === 'string' && UUID_V4_REGEX.test(value);
 
 const investmentProducts = [
   {
@@ -254,7 +257,17 @@ export const getInvestmentProducts = async (req, res, next) => {
 export const getInvestmentProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await prisma.investmentProduct.findUnique({ where: { id } });
+
+    // Look up by UUID primary key, or fall back to the unique `symbol` so that
+    // non-UUID identifiers (e.g. "sbr") return a clean 404 instead of a raw DB error.
+    const product = isUuid(id)
+      ? await prisma.investmentProduct.findUnique({ where: { id } })
+      : await prisma.investmentProduct.findUnique({ where: { symbol: id } });
+
+    if (!product) {
+      return errorResponse(res, 404, 'Investment product not found');
+    }
+
     return successResponse(res, 200, 'Investment product retrieved successfully', { product });
   } catch (err) {
     next(err);
