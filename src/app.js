@@ -28,6 +28,7 @@ app.use(
       callback(null, true);
     },
     credentials: true,
+    maxAge: 86400, // cache preflight 24h — browser tidak perlu kirim OPTIONS tiap request
   })
 );
 app.use(express.json({ limit: '2mb' }));
