@@ -1,8 +1,12 @@
 import prisma from '../config/database.js';
 import { successResponse, errorResponse } from '../utils/response.js';
+import { generateRecommendations } from '../utils/recommendationService.js';
 
 export const getRecommendations = async (req, res, next) => {
   try {
+    // Ensure behaviour-based recommendations exist before reading (idempotent).
+    await generateRecommendations(req.user.id);
+
     const recommendations = await prisma.recommendation.findMany({
       where: {
         user_id: req.user.id,

@@ -4,8 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 const AI_SERVICE_URL =
-  process.env.AI_SERVICE_URL || process.env.ML_SERVICE_URL || 'http://localhost:5000';
-const OCR_API_PATH = '/api/process';
+  process.env.AI_SERVICE_URL || process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const OCR_API_PATH = '/api/predict';
 
 const isSupportedMimeType = (mimeType = '') => {
   const normalized = mimeType.toLowerCase();
