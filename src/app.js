@@ -12,6 +12,8 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import receiptRoutes from './routes/receiptRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
 import investmentRoutes from './routes/investmentRoutes.js';
+import savingsRoutes from './routes/savingsRoutes.js';
+import riskProfileRoutes from './routes/riskProfileRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -21,8 +23,12 @@ app.disable('x-powered-by');
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow all origins (useful for dynamic ngrok URLs)
+      callback(null, true);
+    },
     credentials: true,
+    maxAge: 86400, // cache preflight 24h — browser tidak perlu kirim OPTIONS tiap request
   })
 );
 app.use(express.json({ limit: '2mb' }));
@@ -39,6 +45,8 @@ app.use(dashboardRoutes);
 app.use(receiptRoutes);
 app.use(recommendationRoutes);
 app.use(investmentRoutes);
+app.use(savingsRoutes);
+app.use(riskProfileRoutes);
 
 app.use(errorHandler);
 

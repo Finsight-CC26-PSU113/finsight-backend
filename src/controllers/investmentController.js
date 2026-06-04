@@ -1,4 +1,8 @@
-import { successResponse } from '../utils/response.js';
+import { successResponse, errorResponse } from '../utils/response.js';
+import prisma from '../config/database.js';
+
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const isUuid = (value) => typeof value === 'string' && UUID_V4_REGEX.test(value);
 
 const investmentProducts = [
   {
@@ -89,15 +93,112 @@ const educationContent = [
   },
 ];
 
+const INVESTMENT_CATEGORIES = [
+  { id: 'stock', label: 'Saham' },
+  { id: 'mutual_fund', label: 'Reksa Dana' },
+  { id: 'bond', label: 'Obligasi' },
+  { id: 'gold', label: 'Emas' },
+];
+
+// -----------------------------------------------------------------------------
+// Quotes provider (stub + caching). Swap this with real provider later.
+// -----------------------------------------------------------------------------
+
+const QUOTE_TTL_MS = 60_000;
+const quoteCache = new Map(); // symbol -> { value, expiresAt }
+
+const nowEpoch = () => Date.now();
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const hashString = (value) => {
+  const str = String(value || '');
+  let hash = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const buildStubQuote = (symbol, currency = 'IDR') => {
+  const baseSeed = hashString(symbol);
+  const minuteBucket = Math.floor(nowEpoch() / 60_000);
+  const wobbleSeed = (baseSeed + minuteBucket) % 97;
+
+  // Generate different typical ranges for each asset type by symbol prefix.
+  let basePrice = 10_000;
+  if (symbol === 'XAU-IDR') basePrice = 1_100_000;
+  if (symbol.startsWith('SBN-') || symbol.startsWith('ORI')) basePrice = 1_000_000;
+  if (symbol.startsWith('RD')) basePrice = 1_500;
+
+  const variation = (wobbleSeed - 48) / 480; // ~[-0.1, 0.1]
+  const price = Math.round(basePrice * (1 + variation));
+
+  return {
+    symbol,
+    price: clamp(price, 1, Number.MAX_SAFE_INTEGER),
+    currency,
+    as_of: new Date().toISOString(),
+    source: 'stub',
+  };
+};
+
+const getQuotesForSymbols = async (symbols = []) => {
+  const unique = Array.from(new Set(symbols.map((s) => String(s || '').trim()).filter(Boolean)));
+  const results = [];
+
+  for (const symbol of unique) {
+    const cached = quoteCache.get(symbol);
+    if (cached && cached.expiresAt > nowEpoch()) {
+      results.push(cached.value);
+      continue;
+    }
+
+    const product = await prisma.investmentProduct.findUnique({
+      where: { symbol },
+      select: { currency: true },
+    });
+
+    const quote = buildStubQuote(symbol, product?.currency || 'IDR');
+    quoteCache.set(symbol, { value: quote, expiresAt: nowEpoch() + QUOTE_TTL_MS });
+    results.push(quote);
+  }
+
+  return results;
+};
+
 export const getInvestments = async (req, res, next) => {
   try {
-    const portfolioValue = Number(req.user?.investment_portfolio_value || 0);
+    // For now, derive portfolio value from tracked positions when available.
+    const positions = await prisma.portfolioPosition.findMany({
+      where: { user_id: req.user.id },
+      include: { product: true },
+    });
+
+    const symbols = positions.map((p) => p.product?.symbol).filter(Boolean);
+    const quotes = await getQuotesForSymbols(symbols);
+    const quoteBySymbol = quotes.reduce((map, q) => {
+      map[q.symbol] = q;
+      return map;
+    }, {});
+
+    const portfolioValue = positions.reduce((sum, pos) => {
+      const symbol = pos.product?.symbol;
+      const quote = symbol ? quoteBySymbol[symbol] : null;
+      const price = Number(quote?.price || 0);
+      const qty = Number(pos.quantity || 0);
+      return sum + price * qty;
+    }, 0);
+
     const financialGoalTarget = Number(req.user?.financial_goal_target || 0);
     const financialGoalSaved = Number(req.user?.financial_goal_saved || 0);
 
     return successResponse(res, 200, 'Investments retrieved successfully', {
+      // legacy placeholder products kept for backward compatibility until frontend is migrated
       products: investmentProducts,
       education: educationContent,
+      categories: INVESTMENT_CATEGORIES,
       portfolio: {
         value: portfolioValue,
         has_portfolio: portfolioValue > 0,
@@ -112,6 +213,202 @@ export const getInvestments = async (req, res, next) => {
         },
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getInvestmentProducts = async (req, res, next) => {
+  try {
+    const category = String(req.query.category || '').trim();
+    const search = String(req.query.search || '').trim();
+    const sort = String(req.query.sort || '').trim();
+
+    const where = {};
+    if (category) {
+      where.category = category;
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { symbol: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Basic sorting; quotes-based sorting can be done client-side after fetching quotes.
+    const orderBy = [];
+    if (sort === 'risk_asc') orderBy.push({ risk_level: 'asc' });
+    if (sort === 'risk_desc') orderBy.push({ risk_level: 'desc' });
+    if (sort === 'return_1y_asc') orderBy.push({ return_1y: 'asc' });
+    if (sort === 'return_1y_desc') orderBy.push({ return_1y: 'desc' });
+    if (orderBy.length === 0) orderBy.push({ name: 'asc' });
+
+    const products = await prisma.investmentProduct.findMany({
+      where,
+      orderBy,
+    });
+
+    return successResponse(res, 200, 'Investment products retrieved successfully', { products });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getInvestmentProductById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Look up by UUID primary key, or fall back to the unique `symbol` so that
+    // non-UUID identifiers (e.g. "sbr") return a clean 404 instead of a raw DB error.
+    const product = isUuid(id)
+      ? await prisma.investmentProduct.findUnique({ where: { id } })
+      : await prisma.investmentProduct.findUnique({ where: { symbol: id } });
+
+    if (!product) {
+      return errorResponse(res, 404, 'Investment product not found');
+    }
+
+    return successResponse(res, 200, 'Investment product retrieved successfully', { product });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getInvestmentQuotes = async (req, res, next) => {
+  try {
+    const symbolsRaw = String(req.query.symbols || '');
+    const symbols = symbolsRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const quotes = await getQuotesForSymbols(symbols);
+    return successResponse(res, 200, 'Investment quotes retrieved successfully', { quotes });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getInvestmentPortfolio = async (req, res, next) => {
+  try {
+    const positions = await prisma.portfolioPosition.findMany({
+      where: { user_id: req.user.id },
+      include: { product: true },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const symbols = positions.map((p) => p.product?.symbol).filter(Boolean);
+    const quotes = await getQuotesForSymbols(symbols);
+    const quoteBySymbol = quotes.reduce((map, q) => {
+      map[q.symbol] = q;
+      return map;
+    }, {});
+
+    const enriched = positions.map((pos) => {
+      const symbol = pos.product?.symbol;
+      const quote = symbol ? quoteBySymbol[symbol] : null;
+      const price = Number(quote?.price || 0);
+      const qty = Number(pos.quantity || 0);
+      const marketValue = price * qty;
+
+      const avgCost = pos.avg_cost !== null && pos.avg_cost !== undefined ? Number(pos.avg_cost) : null;
+      const pnl = avgCost !== null ? marketValue - avgCost * qty : null;
+
+      return {
+        id: pos.id,
+        quantity: Number(pos.quantity),
+        avg_cost: avgCost,
+        purchased_at: pos.purchased_at,
+        product: pos.product,
+        quote,
+        market_value: marketValue,
+        pnl,
+      };
+    });
+
+    const totalValue = enriched.reduce((sum, item) => sum + Number(item.market_value || 0), 0);
+    const totalPnl = enriched.reduce((sum, item) => sum + Number(item.pnl || 0), 0);
+
+    return successResponse(res, 200, 'Investment portfolio retrieved successfully', {
+      portfolio: {
+        value: totalValue,
+        pnl: totalPnl,
+        positions: enriched,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const createPortfolioPosition = async (req, res, next) => {
+  try {
+    const { product_id, quantity, avg_cost, purchased_at } = req.body || {};
+    const created = await prisma.portfolioPosition.upsert({
+      where: {
+        user_id_product_id: {
+          user_id: req.user.id,
+          product_id,
+        },
+      },
+      update: {
+        quantity,
+        avg_cost: avg_cost ?? null,
+        purchased_at: purchased_at ? new Date(purchased_at) : null,
+      },
+      create: {
+        user_id: req.user.id,
+        product_id,
+        quantity,
+        avg_cost: avg_cost ?? null,
+        purchased_at: purchased_at ? new Date(purchased_at) : null,
+      },
+      include: { product: true },
+    });
+
+    return successResponse(res, 201, 'Portfolio position saved successfully', { position: created });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updatePortfolioPosition = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quantity, avg_cost, purchased_at } = req.body || {};
+
+    const existing = await prisma.portfolioPosition.findUnique({ where: { id } });
+    if (!existing || existing.user_id !== req.user.id) {
+      return successResponse(res, 404, 'Position not found');
+    }
+
+    const updated = await prisma.portfolioPosition.update({
+      where: { id },
+      data: {
+        ...(quantity !== undefined ? { quantity } : {}),
+        ...(avg_cost !== undefined ? { avg_cost: avg_cost ?? null } : {}),
+        ...(purchased_at !== undefined ? { purchased_at: purchased_at ? new Date(purchased_at) : null } : {}),
+      },
+      include: { product: true },
+    });
+
+    return successResponse(res, 200, 'Portfolio position updated successfully', { position: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deletePortfolioPosition = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.portfolioPosition.findUnique({ where: { id } });
+    if (!existing || existing.user_id !== req.user.id) {
+      return successResponse(res, 404, 'Position not found');
+    }
+
+    await prisma.portfolioPosition.delete({ where: { id } });
+    return successResponse(res, 200, 'Portfolio position deleted successfully');
   } catch (err) {
     next(err);
   }
