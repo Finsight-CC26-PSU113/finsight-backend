@@ -47,6 +47,7 @@ app.use(recommendationRoutes);
 app.use(investmentRoutes);
 app.use(savingsRoutes);
 app.use(riskProfileRoutes);
+app.use(savingsGoalRoutes);
 
 app.use(errorHandler);
 
