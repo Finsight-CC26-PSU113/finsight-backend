@@ -14,6 +14,7 @@ import recommendationRoutes from './routes/recommendationRoutes.js';
 import investmentRoutes from './routes/investmentRoutes.js';
 import savingsRoutes from './routes/savingsRoutes.js';
 import riskProfileRoutes from './routes/riskProfileRoutes.js';
+import aiInsightRoutes from './routes/aiInsightRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -47,6 +48,7 @@ app.use(recommendationRoutes);
 app.use(investmentRoutes);
 app.use(savingsRoutes);
 app.use(riskProfileRoutes);
+app.use(aiInsightRoutes);
 
 app.use(errorHandler);
 
