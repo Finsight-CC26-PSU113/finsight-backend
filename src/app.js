@@ -37,6 +37,8 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'src', 'uploads')));
 
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
 app.use(authRoutes);
 app.use(passwordRoutes);
 app.use(categoryRoutes);
