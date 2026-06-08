@@ -33,5 +33,9 @@ prisma/.env.local
 # Upload files
 uploads/
 
+# Let's Encrypt certificates (di-generate di server, jangan commit)
+certbot/conf/
+certbot/www/
+
 /src/generated/prisma
 test/bruno
