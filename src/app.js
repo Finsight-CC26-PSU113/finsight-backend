@@ -51,6 +51,7 @@ app.use(investmentRoutes);
 app.use(savingsRoutes);
 app.use(riskProfileRoutes);
 app.use(aiInsightRoutes);
+app.use(savingsGoalRoutes);
 
 app.use(errorHandler);
 

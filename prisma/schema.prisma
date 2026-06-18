@@ -34,10 +34,14 @@ enum PaymentMethod {
   @@map("payment_method_enum")
 }
 
-/// income = pemasukan, expense = pengeluaran
+/// income = pemasukan, expense = pengeluaran,
+/// savings_deposit = alokasi ke tujuan tabungan (mengurangi saldo utama),
+/// savings_withdraw = penarikan dari tujuan tabungan (menambah saldo utama)
 enum TransactionType {
   income
   expense
+  savings_deposit
+  savings_withdraw
 
   @@map("transaction_type_enum")
 }
@@ -178,6 +182,7 @@ model Transaction {
   transaction_type   TransactionType @default(expense)
   category_id        String?         @db.Uuid
   user_category_id   String?         @db.Uuid
+  savings_goal_id    String?         @db.Uuid
   description        String?         @db.Text
   amount             Decimal         @db.Decimal(15, 2)
   payment_method     PaymentMethod
@@ -193,14 +198,34 @@ model Transaction {
   user          User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
   category      Category?             @relation(fields: [category_id], references: [id], onDelete: Restrict)
   user_category UserCategory?         @relation(fields: [user_category_id], references: [id], onDelete: SetNull)
+  savings_goal  SavingsGoal?          @relation(fields: [savings_goal_id], references: [id], onDelete: SetNull)
   feedback      TransactionFeedback[]
 
   @@index([user_id])
   @@index([category_id])
+  @@index([savings_goal_id])
   @@index([transaction_date])
   @@index([user_id, transaction_type])
   @@index([user_id, transaction_date])
   @@map("transactions")
+}
+
+/// Tujuan tabungan pengguna (nama, target, dana terkumpul, deadline opsional).
+model SavingsGoal {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String    @db.Uuid
+  name          String    @db.VarChar(100)
+  target_amount Decimal   @db.Decimal(15, 2)
+  saved_amount  Decimal   @default(0) @db.Decimal(15, 2)
+  deadline      DateTime? @db.Date
+  created_at    DateTime  @default(now()) @db.Timestamptz()
+  updated_at    DateTime  @updatedAt @db.Timestamptz()
+
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([user_id])
+  @@map("savings_goals")
 }
 
 /// User correction feedback untuk kategorisasi transaksi (feedback loop TF Classifier).

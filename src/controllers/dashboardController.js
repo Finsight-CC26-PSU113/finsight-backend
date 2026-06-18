@@ -1,5 +1,6 @@
 import prisma from '../config/database.js';
 import { successResponse } from '../utils/response.js';
+import { computeAvailableBalance } from '../utils/balanceUtils.js';
 
 export const getDashboardSummary = async (req, res, next) => {
   try {
@@ -66,8 +67,8 @@ export const getDashboardSummary = async (req, res, next) => {
     const total_income_all = Number(incomeAllAgg._sum.amount || 0);
     const total_expense_all = Number(expenseAllAgg._sum.amount || 0);
 
-    // Balance should represent the user's aggregate balance across all accounts (all-time)
-    const balance = total_income_all - total_expense_all;
+    // Saldo utama tersedia (setelah alokasi ke tujuan tabungan)
+    const balance = await computeAvailableBalance(userId);
 
     // 3. Top Categories Expenses
     const categoryGroup = await prisma.transaction.groupBy({
@@ -77,7 +78,7 @@ export const getDashboardSummary = async (req, res, next) => {
       },
       where: {
         user_id: userId,
-        transaction_type: 'expense',
+        transaction_type: { in: ['expense'] },
         category_id: {
           not: null,
         },
