@@ -210,24 +210,6 @@ model Transaction {
   @@map("transactions")
 }
 
-/// Tujuan tabungan pengguna (nama, target, dana terkumpul, deadline opsional).
-model SavingsGoal {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id       String    @db.Uuid
-  name          String    @db.VarChar(100)
-  target_amount Decimal   @db.Decimal(15, 2)
-  saved_amount  Decimal   @default(0) @db.Decimal(15, 2)
-  deadline      DateTime? @db.Date
-  created_at    DateTime  @default(now()) @db.Timestamptz()
-  updated_at    DateTime  @updatedAt @db.Timestamptz()
-
-  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-
-  @@index([user_id])
-  @@map("savings_goals")
-}
-
 /// User correction feedback untuk kategorisasi transaksi (feedback loop TF Classifier).
 model TransactionFeedback {
   id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -441,8 +423,9 @@ model SavingsGoal {
   updated_at    DateTime  @updatedAt @db.Timestamptz()
 
   // Relations
-  user   User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  ledger SavingsLedger[]
+  user         User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  ledger       SavingsLedger[]
 
   @@index([user_id])
   @@map("savings_goals")
