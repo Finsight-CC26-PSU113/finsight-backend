@@ -13,6 +13,7 @@ import receiptRoutes from './routes/receiptRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
 import investmentRoutes from './routes/investmentRoutes.js';
 import savingsRoutes from './routes/savingsRoutes.js';
+import savingsGoalRoutes from './routes/savingsGoalRoutes.js';
 import riskProfileRoutes from './routes/riskProfileRoutes.js';
 import aiInsightRoutes from './routes/aiInsightRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
